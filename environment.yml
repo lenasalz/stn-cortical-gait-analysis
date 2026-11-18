@@ -1,0 +1,28 @@
+name: residual_activity
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - scikit-learn
+  - statsmodels
+  - mne
+  - mne-connectivity
+  - autoreject
+  - fooof
+  - xarray
+  - h5netcdf
+  - netcdf4
+  - joblib
+  - pyyaml
+  - tqdm
+  - pip
+  - pip:
+      - black
+      - ruff
+      - nbqa

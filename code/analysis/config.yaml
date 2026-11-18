@@ -1,0 +1,174 @@
+# Pipeline configuration for the residual-activity per-subject derivatives.
+#
+# All scripts under code/analysis/ read this file via _common.load_config().
+# Edit only this file to switch cohorts, blocks, paths, or analysis params —
+# never edit the same value in a script.
+#
+# Project rules: paths point to the server location described in
+# data/README.md; nothing under data/derivatives/ is committed; subjects are
+# referenced by anonymized codes only ("P4-XXXX").
+
+paths:
+  # Location of the input data. Resolve order: env var $RESIDUAL_DATA_ROOT,
+  # then this value. Left empty on purpose: set RESIDUAL_DATA_ROOT in your
+  # shell (or fill in a path here) before running stages that read input data.
+  data_root: ""
+
+  # All derivative outputs live under data/derivatives/, gitignored.
+  # Relative to the project root.
+  derivatives_root: "data/derivatives"
+
+  # Subdirectories (auto-created):
+  raw_clean_dir:    "raw_clean"     # <subj>_<block>-{eeg,dbs}-raw.fif
+  epochs_dir:       "epochs"        # <subj>_<block>-epo.fif
+  tfr_dir:          "tfr"           # <subj>_<block>-tfr.h5
+  psd_dir:          "psd"           # <subj>_<block>-psd.nc
+  fooof_dir:        "fooof"         # <subj>_<block>-fg.pkl
+  connectivity_dir: "connectivity"  # <subj>_<block>-conn.nc
+  band_power_dir:   "band_power"    # <subj>_<block>-bp.csv
+  tfr_gavg_dir:     "tfr_gavg"      # <block>-<modality>-tfr-gavg.nc (cohort grand averages)
+  index_csv:        "index.csv"     # which (subj, block, stage) artifacts exist
+
+cohorts:
+  # Anonymized codes only. Update when the cohort changes.
+  Patient_NFB:
+    - P4-2002
+    - P4-2003
+    - P4-2004
+    - P4-2005
+    - P4-2007
+    - P4-2008
+    - P4-2009
+    - P4-2010
+    - P4-2011
+    - P4-2012
+  AgeMatched_NFB:
+    # Verified against the actual `Final_filtered/all_data_epoched_dico.pkl`
+    # cohort roster on 2026-05-06.
+    - P4-1005
+    - P4-1010
+    - P4-1011
+    - P4-1012
+    - P4-1013
+    - P4-1014
+    - P4-1015
+    - P4-1017
+    - P4-1018
+    - P4-1019
+
+# Documented corrections of acquisition-config errors on the (read-only)
+# server. Keys are subject codes; values replace `patient.sens_lead_loc`
+# from config_<subject>.yml. Applied by data_loader.load_dbs_data().
+dbs_side_overrides:
+  # The acquisition config lists sens_lead_loc "left" for this subject; the
+  # device export contains only a right-hemisphere channel and the analyzed
+  # time series matches that stream. The config field is a data-entry
+  # error; the recorded STN is the RIGHT hemisphere.
+  P4-2012: right
+
+# Documented corrections of the gait-event placement in the pickle-era
+# `raw_clean` export. Applied by code/analysis/revision/correct_gait_events.py,
+# which keeps the untouched export under raw_clean/original_events/ and writes
+# the corrected annotations into the file the pipeline reads.
+#
+# Evidence: docs/vicon_start_check_2026-11-10.md (lag scan of all 20 pre8walk
+# walks and the follow-up of 2026-11-16). In both walks the Vicon capture was
+# started twice; the MATLAB preparation placed the events at the first
+# "Enter pressed" marker, the events belong to the second.
+#   shift_s      seconds added to every gait-event onset (second press minus
+#                first press, read from the "Enter pressed" annotations)
+#   drop_from_s  gait events with an ORIGINAL onset at or after this time are
+#                removed (null = keep all)
+gait_event_corrections:
+  P4-1018:
+    block: pre8walk
+    shift_s: 2.75
+    # From the pass starting at 390.6 s every pass has its own offset to the
+    # stepping artefact in the EEG (72 of 379 heel strikes); not recoverable.
+    drop_from_s: 390.0
+  P4-1019:
+    block: pre8walk
+    shift_s: 7.04
+    drop_from_s: null
+
+blocks:
+  - baseline
+  - pre8walk
+
+# Blocks accepted by per-subject --block invocations but excluded from all
+# `--all` pipeline sweeps. post8walk exists only as server proc fifs (not in
+# the legacy pickles; verified 2026-08-14) and is processed for exploratory
+# QA/figures, not for manuscript results.
+extra_blocks:
+  - post8walk
+
+# Frequency band edges in Hz, ported from
+# ngb_study/notebooks/analysis/scripts/variables.py:freq_bands.
+# Keep in sync with the manuscript Methods section.
+freq_bands:
+  Theta:     [4,  8]
+  Alpha:     [8,  12]
+  Low Beta:  [12, 20]
+  High Beta: [20, 30]
+  Gamma:     [30, 45]
+
+psd:
+  # Welch parameters
+  fmin: 1.0
+  fmax: 45.0
+  nperseg: 1024
+  norm_freq_range: [1.0, 45.0]   # paper-defined relative-power normalization
+  method: welch
+  average: median                # 'mean' or 'median' across epochs
+
+tfr:
+  # Morlet TFR parameters; ported verbatim from final_analysis/scripts/tfr.py:
+  # compute_tfr_on_subset_and_normalize_optimized (the call inside
+  # process_and_save_tfr_data). Uses evolving wavelets with a target
+  # temporal resolution of FWHM = 200 ms.
+  #
+  # n_cycles[f] = 2 * pi * f * sigma   where   sigma = fwhm_s / (2 * sqrt(2 * ln 2))
+  #            ≈ 0.534 * f             at fwhm_s = 0.200
+  freqs:                         # np.arange(fmin, fmax+1, 1) at runtime
+    fmin: 1
+    fmax: 45
+    fstep: 1
+  fwhm_s: 0.200                  # target FWHM of the Morlet wavelet (seconds)
+  decim: 1                       # for compute_tfr.py (epoched input — short)
+  # compute_tfr_continuous.py decim (raw input — minutes-long).
+  # `1` matches the legacy paper default (no post-TFR decimation).
+  # EEG at decim=1 produces ~20 GB per (subject, block) on disk and
+  # ~400 GB across the cohort; if disk-constrained, raise EEG to 10
+  # (~2 GB per subject) — gait-warp resamples to 220 samples per
+  # cycle downstream so the regional aggregate is virtually identical
+  # (sampling-theorem-equivalent). DBS native sfreq is 250 Hz so
+  # decim=1 is cheap there regardless.
+  continuous_decim:
+    eeg: 2                       # 1000 Hz output @ 2000 Hz raw — smooth heatmaps, fits memory
+    dbs: 1                       # keep native 250 Hz — decim would alias gamma
+  target_sfreq: null             # null = no resample; set int to downsample
+
+connectivity:
+  methods: [coh, imcoh, plv, pli, wpli, cohy]
+  mode: cwt_morlet
+  # Verbatim from ngb_study/notebooks/analysis/scripts/variables.py:140-160.
+  channels_of_interest:
+    motor:
+      Left:    [C1, C3]
+      Right:   [C2, C4]
+      Central: [Cz]
+    frontal:
+      Left:    [AF3, F1]
+      Right:   [AF4, F2]
+      Central: [Fz]
+
+fooof:
+  # Verbatim from analysis.ipynb cell 77: FOOOFGroup(...).
+  peak_width_limits: [2, 12.0]
+  max_n_peaks: 3
+  min_peak_height: 0.15
+  aperiodic_mode: fixed
+  freq_range: [4.0, 45.0]
+
+repro:
+  seed: 42
