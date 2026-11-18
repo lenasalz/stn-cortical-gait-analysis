@@ -23,8 +23,21 @@ Most scripts start with a header listing their inputs, outputs and purpose.
     conda env create -f environment.yml
     conda activate residual_activity
 
-The R scripts use `lme4`, `lmerTest`, `emmeans`, `dplyr`, `tidyr`, `tibble`,
-`data.table` and `readxl`.
+`environment.yml` pins the Python package versions the analyses were run with.
+
+The R scripts were run with R 4.5.1 and these package versions:
+
+| Package | Version |
+|---|---|
+| lme4 | 1.1.37 |
+| lmerTest | 3.1.3 |
+| emmeans | 1.11.2.8 |
+| nlme | 3.1.168 |
+| dplyr | 1.2.1 |
+| tidyr | 1.3.2 |
+| tibble | 3.3.0 |
+| data.table | 1.17.8 |
+| readxl | 1.5.0 |
 
 ## Data location
 

@@ -1,28 +1,34 @@
+# Python environment for the analysis code.
+# Versions are those installed in the environment the analyses were run in
+# (macOS arm64, conda-forge).
 name: residual_activity
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
-  - numpy
-  - scipy
-  - pandas
-  - matplotlib
-  - seaborn
-  - jupyterlab
-  - scikit-learn
-  - statsmodels
-  - mne
-  - mne-connectivity
-  - autoreject
-  - fooof
-  - xarray
-  - h5netcdf
-  - netcdf4
-  - joblib
-  - pyyaml
-  - tqdm
+  - python=3.11.15
+  - numpy=2.4.3
+  - scipy=1.17.1
+  - pandas=3.0.2
+  - matplotlib=3.10.9
+  - seaborn=0.13.2
+  - jupyterlab=4.5.7
+  - ipython=9.13.0
+  - scikit-learn=1.8.0
+  - statsmodels=0.14.6
+  - mne=1.12.1
+  - mne-connectivity=0.8.1
+  - autoreject=0.4.3
+  - fooof=1.1.1
+  - xarray=2026.4.0
+  - h5netcdf=1.8.1
+  - netcdf4=1.7.4
+  - h5py=3.16.0
+  - h5io=0.2.5
+  - joblib=1.5.3
+  - pyyaml=6.0.3
+  - tqdm=4.67.3
   - pip
   - pip:
-      - black
-      - ruff
-      - nbqa
+      - black==26.3.1
+      - ruff==0.15.12
+      - nbqa==1.9.1
